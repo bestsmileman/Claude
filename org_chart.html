@@ -100,7 +100,13 @@
         const diagram = $(go.Diagram, "orgChartDiv", {
             "undoManager.isEnabled": true,
             "linkingTool.isEnabled": true,
+            "linkingTool.portGravity": 60,
             "relinkingTool.isEnabled": true,
+            "relinkingTool.portGravity": 60,
+            "relinkingTool.fromHandleArchetype":
+                $(go.Shape, "Diamond", { desiredSize: new go.Size(10, 10), fill: "#FF7043", stroke: "#E64A19", cursor: "pointer" }),
+            "relinkingTool.toHandleArchetype":
+                $(go.Shape, "Diamond", { desiredSize: new go.Size(10, 10), fill: "#42A5F5", stroke: "#1565C0", cursor: "pointer" }),
             layout: $(go.TreeLayout, {
                 treeStyle: go.TreeStyle.LastParents,
                 arrangement: go.TreeArrangement.Horizontal,
@@ -129,12 +135,12 @@
             return "📌";
         }
 
-        // 연결점(포트) 생성 함수
+        // 연결점(포트) 생성 함수 - 큰 히트 영역 + 시각 피드백
         function makePort(name, spot, output, input) {
             return $(go.Shape, "Circle", {
                 fill: "transparent",
                 stroke: null,
-                desiredSize: new go.Size(10, 10),
+                desiredSize: new go.Size(18, 18),
                 alignment: spot,
                 alignmentFocus: spot,
                 portId: name,
@@ -142,9 +148,21 @@
                 toSpot: spot,
                 fromLinkable: output,
                 toLinkable: input,
+                fromLinkableDuplicates: false,
+                toLinkableDuplicates: false,
                 cursor: "pointer",
-                mouseEnter: function(e, port) { port.fill = "#FF7043"; },
-                mouseLeave: function(e, port) { port.fill = "transparent"; }
+                mouseEnter: function(e, port) {
+                    if (!e.diagram.isReadOnly) {
+                        port.fill = "#FF7043";
+                        port.stroke = "#E64A19";
+                        port.strokeWidth = 2;
+                    }
+                },
+                mouseLeave: function(e, port) {
+                    port.fill = "transparent";
+                    port.stroke = null;
+                    port.strokeWidth = 0;
+                }
             });
         }
 
@@ -203,12 +221,16 @@
         diagram.linkTemplate =
             $(go.Link,
                 {
-                    routing: go.Routing.AvoidsNodes,
-                    corner: 10,
+                    routing: go.Routing.Orthogonal,
+                    corner: 5,
                     relinkableFrom: true,
                     relinkableTo: true,
                     reshapable: true,
                     resegmentable: true,
+                    selectionAdornmentTemplate:
+                        $(go.Adornment, "Link",
+                            $(go.Shape, { isPanelMain: true, stroke: "#FF7043", strokeWidth: 4 })
+                        ),
                     cursor: "pointer"
                 },
                 new go.Binding("fromPortId").makeTwoWay(),
