@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5학년 1반 조직도 - GoJS</title>
+    <script src="https://cdn.jsdelivr.net/npm/gojs@3.1.4/release/go.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #fff9c4);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+        }
+        h1 {
+            font-size: 26px;
+            color: #37474f;
+            margin-bottom: 20px;
+        }
+        #orgChartDiv {
+            width: 900px;
+            height: 520px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+        }
+        .btn-bar {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 22px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-copy {
+            background: #42A5F5;
+            color: white;
+        }
+        .btn-copy:hover { background: #1E88E5; }
+        .btn-copy.copied {
+            background: #66BB6A;
+        }
+        .btn-download {
+            background: #FF7043;
+            color: white;
+        }
+        .btn-download:hover { background: #E64A19; }
+    </style>
+</head>
+<body>
+    <h1>📚 초등학교 5학년 1반 조직도</h1>
+    <div id="orgChartDiv"></div>
+    <div class="btn-bar">
+        <button class="btn btn-copy" onclick="copySource()">📋 HTML 소스 복사</button>
+        <button class="btn btn-download" onclick="downloadSource()">💾 HTML 파일 다운로드</button>
+    </div>
+
+    <script>
+        function downloadSource() {
+            var src = document.documentElement.outerHTML;
+            var full = "<!DOCTYPE html>\n" + src;
+            var blob = new Blob([full], { type: "text/html;charset=utf-8" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "org_chart.html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function copySource() {
+            var src = document.documentElement.outerHTML;
+            var full = "<!DOCTYPE html>\n" + src;
+            navigator.clipboard.writeText(full).then(function() {
+                var btn = document.querySelector('.btn-copy');
+                btn.textContent = "✅ 복사 완료!";
+                btn.classList.add("copied");
+                setTimeout(function() {
+                    btn.textContent = "📋 HTML 소스 복사";
+                    btn.classList.remove("copied");
+                }, 2000);
+            });
+        }
+
+        function init() {
+            // 노드 색상 매핑
+            function getNodeColor(role) {
+                if (role === "담임선생님") return { bg: "#FFEBEE", border: "#EF5350", text: "#C62828" };
+                if (role === "급장")       return { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" };
+                return                            { bg: "#E8F5E9", border: "#66BB6A", text: "#2E7D32" };
+            }
+
+            // 아이콘 매핑
+            function getIcon(role) {
+                if (role === "담임선생님") return "👩‍🏫";
+                if (role === "급장")       return "⭐";
+                if (role === "미화반장")   return "🧹";
+                if (role === "체육반장")   return "⚽";
+                if (role === "문화반장")   return "🎵";
+                return "📌";
+            }
+
+            var myDiagram = new go.Diagram("orgChartDiv", {
+                "undoManager.isEnabled": true,
+                layout: new go.TreeLayout({
+                    angle: 90,
+                    nodeSpacing: 5
+                })
+            });
+
+            // 노드 템플릿 - familyTreeJP 패턴 적용
+            myDiagram.nodeTemplate =
+                new go.Node("Auto")
+                    .bind("text", "name")
+                    .add(
+                        new go.Shape("RoundedRectangle", {
+                            fill: "white",
+                            stroke: "black",
+                            strokeWidth: 2.5,
+                            parameter1: 12,
+                            stretch: go.Stretch.Fill,
+                            alignment: go.Spot.Center
+                        })
+                        .bind("fill", "role", function(r) { return getNodeColor(r).bg; })
+                        .bind("stroke", "role", function(r) { return getNodeColor(r).border; }),
+                        new go.Panel("Vertical")
+                            .add(
+                                new go.TextBlock({
+                                    font: "28px sans-serif",
+                                    alignment: go.Spot.Center,
+                                    margin: new go.Margin(8, 16, 0, 16)
+                                })
+                                .bind("text", "role", function(r) { return getIcon(r); }),
+                                new go.TextBlock({
+                                    font: "bold 13px 'Malgun Gothic', sans-serif",
+                                    alignment: go.Spot.Center,
+                                    margin: new go.Margin(2, 16, 0, 16)
+                                })
+                                .bind("text", "role")
+                                .bind("stroke", "role", function(r) { return getNodeColor(r).text; }),
+                                new go.TextBlock({
+                                    font: "bold 18px 'Malgun Gothic', sans-serif",
+                                    stroke: "#263238",
+                                    alignment: go.Spot.Center,
+                                    margin: new go.Margin(2, 16, 8, 16)
+                                })
+                                .bind("text", "name")
+                            )
+                    );
+
+            // 링크 템플릿 - familyTreeJP 패턴 그대로 적용
+            myDiagram.linkTemplate =
+                new go.Link({
+                    routing: go.Routing.Orthogonal,
+                    corner: 5,
+                    selectable: false
+                })
+                .add(
+                    new go.Shape({ strokeWidth: 2, stroke: "#90A4AE" })
+                );
+
+            // TreeModel - familyTreeJP 패턴: parent 키로 연결
+            var nodeDataArray = [
+                { key: 1, name: "",       role: "담임선생님" },
+                { key: 2, name: "가가가", role: "급장",     parent: 1 },
+                { key: 3, name: "나나나", role: "미화반장",  parent: 2 },
+                { key: 4, name: "다다다", role: "체육반장",  parent: 2 },
+                { key: 5, name: "라라라", role: "문화반장",  parent: 2 }
+            ];
+
+            myDiagram.model = new go.TreeModel(nodeDataArray);
+        }
+
+        window.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>
