@@ -51,6 +51,11 @@
         .btn-copy.copied {
             background: #66BB6A;
         }
+        .btn-download {
+            background: #FF7043;
+            color: white;
+        }
+        .btn-download:hover { background: #E64A19; }
     </style>
 </head>
 <body>
@@ -58,9 +63,24 @@
     <div id="orgChartDiv"></div>
     <div class="btn-bar">
         <button class="btn btn-copy" onclick="copySource()">📋 HTML 소스 복사</button>
+        <button class="btn btn-download" onclick="downloadSource()">💾 HTML 파일 다운로드</button>
     </div>
 
     <script>
+        function downloadSource() {
+            const src = document.documentElement.outerHTML;
+            const full = "<!DOCTYPE html>\n" + src;
+            const blob = new Blob([full], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "org_chart.html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
         function copySource() {
             const src = document.documentElement.outerHTML;
             const full = "<!DOCTYPE html>\n" + src;
