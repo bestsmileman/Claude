@@ -68,11 +68,11 @@
 
     <script>
         function downloadSource() {
-            const src = document.documentElement.outerHTML;
-            const full = "<!DOCTYPE html>\n" + src;
-            const blob = new Blob([full], { type: "text/html;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
+            var src = document.documentElement.outerHTML;
+            var full = "<!DOCTYPE html>\n" + src;
+            var blob = new Blob([full], { type: "text/html;charset=utf-8" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
             a.href = url;
             a.download = "org_chart.html";
             document.body.appendChild(a);
@@ -82,10 +82,10 @@
         }
 
         function copySource() {
-            const src = document.documentElement.outerHTML;
-            const full = "<!DOCTYPE html>\n" + src;
+            var src = document.documentElement.outerHTML;
+            var full = "<!DOCTYPE html>\n" + src;
             navigator.clipboard.writeText(full).then(function() {
-                const btn = document.querySelector('.btn-copy');
+                var btn = document.querySelector('.btn-copy');
                 btn.textContent = "✅ 복사 완료!";
                 btn.classList.add("copied");
                 setTimeout(function() {
@@ -95,18 +95,33 @@
             });
         }
 
-        const $ = go.GraphObject.make;
+        var $ = go.GraphObject.make;
 
-        const diagram = $(go.Diagram, "orgChartDiv", {
+        var diagram = $(go.Diagram, "orgChartDiv", {
             "undoManager.isEnabled": true,
             "linkingTool.isEnabled": true,
-            "linkingTool.portGravity": 60,
+            "linkingTool.portGravity": 100,
+            "linkingTool.isUnconnectedLinkValid": false,
             "relinkingTool.isEnabled": true,
-            "relinkingTool.portGravity": 60,
+            "relinkingTool.portGravity": 100,
+            "relinkingTool.isUnconnectedLinkValid": false,
             "relinkingTool.fromHandleArchetype":
-                $(go.Shape, "Diamond", { desiredSize: new go.Size(10, 10), fill: "#FF7043", stroke: "#E64A19", cursor: "pointer" }),
+                $(go.Shape, "Diamond", {
+                    segmentIndex: 0, cursor: "pointer",
+                    desiredSize: new go.Size(10, 10),
+                    fill: "tomato", stroke: "darkred"
+                }),
             "relinkingTool.toHandleArchetype":
-                $(go.Shape, "Diamond", { desiredSize: new go.Size(10, 10), fill: "#42A5F5", stroke: "#1565C0", cursor: "pointer" }),
+                $(go.Shape, "Diamond", {
+                    segmentIndex: -1, cursor: "pointer",
+                    desiredSize: new go.Size(10, 10),
+                    fill: "darkred", stroke: "tomato"
+                }),
+            "linkReshapingTool.handleArchetype":
+                $(go.Shape, "Diamond", {
+                    desiredSize: new go.Size(7, 7),
+                    fill: "lightblue", stroke: "deepskyblue"
+                }),
             layout: $(go.TreeLayout, {
                 treeStyle: go.TreeStyle.LastParents,
                 arrangement: go.TreeArrangement.Horizontal,
@@ -135,12 +150,12 @@
             return "📌";
         }
 
-        // 연결점(포트) 생성 함수 - 큰 히트 영역 + 시각 피드백
+        // 포트 생성: 노드 호버 시 보이는 연결점
         function makePort(name, spot, output, input) {
             return $(go.Shape, "Circle", {
-                fill: "transparent",
+                fill: null,
                 stroke: null,
-                desiredSize: new go.Size(18, 18),
+                desiredSize: new go.Size(12, 12),
                 alignment: spot,
                 alignmentFocus: spot,
                 portId: name,
@@ -148,20 +163,16 @@
                 toSpot: spot,
                 fromLinkable: output,
                 toLinkable: input,
-                fromLinkableDuplicates: false,
-                toLinkableDuplicates: false,
-                cursor: "pointer",
-                mouseEnter: function(e, port) {
-                    if (!e.diagram.isReadOnly) {
-                        port.fill = "#FF7043";
-                        port.stroke = "#E64A19";
-                        port.strokeWidth = 2;
-                    }
-                },
-                mouseLeave: function(e, port) {
-                    port.fill = "transparent";
-                    port.stroke = null;
-                    port.strokeWidth = 0;
+                cursor: "pointer"
+            });
+        }
+
+        // 노드에 마우스 올리면 포트 표시
+        function showPorts(node, show) {
+            node.ports.each(function(port) {
+                if (port.portId !== "") {
+                    port.fill = show ? "rgba(255, 112, 67, 0.8)" : null;
+                    port.stroke = show ? "#E64A19" : null;
                 }
             });
         }
@@ -169,18 +180,24 @@
         diagram.nodeTemplate =
             $(go.Node, "Spot",
                 {
-                    cursor: "pointer",
                     locationSpot: go.Spot.Center,
                     movable: true,
-                    selectionAdorned: true
+                    selectionAdorned: true,
+                    mouseEnter: function(e, node) { showPorts(node, true); },
+                    mouseLeave: function(e, node) { showPorts(node, false); }
                 },
                 new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+                // 메인 패널 (기본 포트 역할도 겸함)
                 $(go.Panel, "Auto",
                     $(go.Shape, "RoundedRectangle",
                         {
                             strokeWidth: 2.5,
                             parameter1: 12,
-                            fill: "white"
+                            fill: "white",
+                            portId: "",
+                            fromLinkable: true,
+                            toLinkable: true,
+                            cursor: "pointer"
                         },
                         new go.Binding("fill", "role", function(r) { return getNodeColor(r).bg; }),
                         new go.Binding("stroke", "role", function(r) { return getNodeColor(r).border; })
@@ -211,37 +228,34 @@
                         )
                     )
                 ),
-                // 상하좌우 4개 연결점
-                makePort("T", go.Spot.Top,    true, true),
-                makePort("B", go.Spot.Bottom, true, true),
-                makePort("L", go.Spot.Left,   true, true),
-                makePort("R", go.Spot.Right,  true, true)
+                // 상하좌우 4개 연결 포트
+                makePort("T", go.Spot.Top,    false, true),
+                makePort("B", go.Spot.Bottom, true,  false),
+                makePort("L", go.Spot.Left,   true,  true),
+                makePort("R", go.Spot.Right,  true,  true)
             );
 
         diagram.linkTemplate =
             $(go.Link,
                 {
-                    routing: go.Routing.Orthogonal,
+                    routing: go.Routing.AvoidsNodes,
+                    curve: go.Curve.JumpOver,
                     corner: 5,
+                    toShortLength: 4,
                     relinkableFrom: true,
                     relinkableTo: true,
                     reshapable: true,
-                    resegmentable: true,
                     selectionAdornmentTemplate:
                         $(go.Adornment, "Link",
-                            $(go.Shape, { isPanelMain: true, stroke: "#FF7043", strokeWidth: 4 })
-                        ),
-                    cursor: "pointer"
+                            $(go.Shape, { isPanelMain: true, stroke: "deepskyblue", strokeWidth: 3 })
+                        )
                 },
-                new go.Binding("fromPortId").makeTwoWay(),
-                new go.Binding("toPortId").makeTwoWay(),
                 new go.Binding("points").makeTwoWay(),
-                $(go.Shape, { strokeWidth: 2.5, stroke: "#90A4AE" }),
-                $(go.Shape, { toArrow: "Triangle", stroke: "#90A4AE", fill: "#90A4AE", scale: 1.2 })
+                $(go.Shape, { isPanelMain: true, strokeWidth: 2.5, stroke: "#90A4AE" }),
+                $(go.Shape, { toArrow: "Standard", stroke: null, fill: "#90A4AE" })
             );
 
         diagram.model = new go.GraphLinksModel(
-            // 노드 데이터
             [
                 { key: 1, name: "",       role: "담임선생님" },
                 { key: 2, name: "가가가", role: "급장" },
@@ -249,12 +263,11 @@
                 { key: 4, name: "다다다", role: "체육반장" },
                 { key: 5, name: "라라라", role: "문화반장" }
             ],
-            // 연결선 데이터
             [
-                { from: 1, to: 2, fromPortId: "B", toPortId: "T" },
-                { from: 2, to: 3, fromPortId: "B", toPortId: "T" },
-                { from: 2, to: 4, fromPortId: "B", toPortId: "T" },
-                { from: 2, to: 5, fromPortId: "B", toPortId: "T" }
+                { from: 1, to: 2 },
+                { from: 2, to: 3 },
+                { from: 2, to: 4 },
+                { from: 2, to: 5 }
             ]
         );
     </script>
