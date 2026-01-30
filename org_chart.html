@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>5학년 1반 조직도 - GoJS</title>
-    <script src="https://unpkg.com/gojs/release/go.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gojs@3.1.4/release/go.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -95,181 +95,96 @@
             });
         }
 
-        var $ = go.GraphObject.make;
+        function init() {
+            // 노드 색상 매핑
+            function getNodeColor(role) {
+                if (role === "담임선생님") return { bg: "#FFEBEE", border: "#EF5350", text: "#C62828" };
+                if (role === "급장")       return { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" };
+                return                            { bg: "#E8F5E9", border: "#66BB6A", text: "#2E7D32" };
+            }
 
-        var diagram = $(go.Diagram, "orgChartDiv", {
-            "undoManager.isEnabled": true,
-            "linkingTool.isEnabled": true,
-            "linkingTool.portGravity": 100,
-            "linkingTool.isUnconnectedLinkValid": false,
-            "relinkingTool.isEnabled": true,
-            "relinkingTool.portGravity": 100,
-            "relinkingTool.isUnconnectedLinkValid": false,
-            "relinkingTool.fromHandleArchetype":
-                $(go.Shape, "Diamond", {
-                    segmentIndex: 0, cursor: "pointer",
-                    desiredSize: new go.Size(10, 10),
-                    fill: "tomato", stroke: "darkred"
-                }),
-            "relinkingTool.toHandleArchetype":
-                $(go.Shape, "Diamond", {
-                    segmentIndex: -1, cursor: "pointer",
-                    desiredSize: new go.Size(10, 10),
-                    fill: "darkred", stroke: "tomato"
-                }),
-            "linkReshapingTool.handleArchetype":
-                $(go.Shape, "Diamond", {
-                    desiredSize: new go.Size(7, 7),
-                    fill: "lightblue", stroke: "deepskyblue"
-                }),
-            layout: $(go.TreeLayout, {
-                treeStyle: go.TreeStyle.LastParents,
-                arrangement: go.TreeArrangement.Horizontal,
-                angle: 90,
-                layerSpacing: 50,
-                nodeSpacing: 30
-            }),
-            initialContentAlignment: go.Spot.Center,
-            initialAutoScale: go.AutoScale.Uniform
-        });
+            // 아이콘 매핑
+            function getIcon(role) {
+                if (role === "담임선생님") return "👩‍🏫";
+                if (role === "급장")       return "⭐";
+                if (role === "미화반장")   return "🧹";
+                if (role === "체육반장")   return "⚽";
+                if (role === "문화반장")   return "🎵";
+                return "📌";
+            }
 
-        // 노드 색상 매핑
-        function getNodeColor(role) {
-            if (role === "담임선생님") return { bg: "#FFEBEE", border: "#EF5350", text: "#C62828" };
-            if (role === "급장")       return { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" };
-            return                            { bg: "#E8F5E9", border: "#66BB6A", text: "#2E7D32" };
-        }
-
-        // 아이콘 매핑
-        function getIcon(role) {
-            if (role === "담임선생님") return "👩‍🏫";
-            if (role === "급장")       return "⭐";
-            if (role === "미화반장")   return "🧹";
-            if (role === "체육반장")   return "⚽";
-            if (role === "문화반장")   return "🎵";
-            return "📌";
-        }
-
-        // 포트 생성: 노드 호버 시 보이는 연결점
-        function makePort(name, spot, output, input) {
-            return $(go.Shape, "Circle", {
-                fill: null,
-                stroke: null,
-                desiredSize: new go.Size(12, 12),
-                alignment: spot,
-                alignmentFocus: spot,
-                portId: name,
-                fromSpot: spot,
-                toSpot: spot,
-                fromLinkable: output,
-                toLinkable: input,
-                cursor: "pointer"
+            var myDiagram = new go.Diagram("orgChartDiv", {
+                "undoManager.isEnabled": true,
+                layout: new go.TreeLayout({
+                    angle: 90,
+                    nodeSpacing: 5
+                })
             });
-        }
 
-        // 노드에 마우스 올리면 포트 표시
-        function showPorts(node, show) {
-            node.ports.each(function(port) {
-                if (port.portId !== "") {
-                    port.fill = show ? "rgba(255, 112, 67, 0.8)" : null;
-                    port.stroke = show ? "#E64A19" : null;
-                }
-            });
-        }
-
-        diagram.nodeTemplate =
-            $(go.Node, "Spot",
-                {
-                    locationSpot: go.Spot.Center,
-                    movable: true,
-                    selectionAdorned: true,
-                    mouseEnter: function(e, node) { showPorts(node, true); },
-                    mouseLeave: function(e, node) { showPorts(node, false); }
-                },
-                new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
-                // 메인 패널 (기본 포트 역할도 겸함)
-                $(go.Panel, "Auto",
-                    $(go.Shape, "RoundedRectangle",
-                        {
+            // 노드 템플릿 - familyTreeJP 패턴 적용
+            myDiagram.nodeTemplate =
+                new go.Node("Auto")
+                    .bind("text", "name")
+                    .add(
+                        new go.Shape("RoundedRectangle", {
+                            fill: "white",
+                            stroke: "black",
                             strokeWidth: 2.5,
                             parameter1: 12,
-                            fill: "white",
-                            portId: "",
-                            fromLinkable: true,
-                            toLinkable: true,
-                            cursor: "pointer"
-                        },
-                        new go.Binding("fill", "role", function(r) { return getNodeColor(r).bg; }),
-                        new go.Binding("stroke", "role", function(r) { return getNodeColor(r).border; })
-                    ),
-                    $(go.Panel, "Vertical",
-                        { margin: new go.Margin(12, 20, 12, 20) },
-                        $(go.TextBlock,
-                            {
-                                font: "28px sans-serif",
-                                margin: new go.Margin(0, 0, 4, 0)
-                            },
-                            new go.Binding("text", "role", function(r) { return getIcon(r); })
-                        ),
-                        $(go.TextBlock,
-                            {
-                                font: "bold 13px 'Malgun Gothic', sans-serif",
-                                margin: new go.Margin(0, 0, 4, 0)
-                            },
-                            new go.Binding("text", "role"),
-                            new go.Binding("stroke", "role", function(r) { return getNodeColor(r).text; })
-                        ),
-                        $(go.TextBlock,
-                            {
-                                font: "bold 18px 'Malgun Gothic', sans-serif",
-                                stroke: "#263238"
-                            },
-                            new go.Binding("text", "name")
-                        )
-                    )
-                ),
-                // 상하좌우 4개 연결 포트
-                makePort("T", go.Spot.Top,    false, true),
-                makePort("B", go.Spot.Bottom, true,  false),
-                makePort("L", go.Spot.Left,   true,  true),
-                makePort("R", go.Spot.Right,  true,  true)
-            );
+                            stretch: go.Stretch.Fill,
+                            alignment: go.Spot.Center
+                        })
+                        .bind("fill", "role", function(r) { return getNodeColor(r).bg; })
+                        .bind("stroke", "role", function(r) { return getNodeColor(r).border; }),
+                        new go.Panel("Vertical")
+                            .add(
+                                new go.TextBlock({
+                                    font: "28px sans-serif",
+                                    alignment: go.Spot.Center,
+                                    margin: new go.Margin(8, 16, 0, 16)
+                                })
+                                .bind("text", "role", function(r) { return getIcon(r); }),
+                                new go.TextBlock({
+                                    font: "bold 13px 'Malgun Gothic', sans-serif",
+                                    alignment: go.Spot.Center,
+                                    margin: new go.Margin(2, 16, 0, 16)
+                                })
+                                .bind("text", "role")
+                                .bind("stroke", "role", function(r) { return getNodeColor(r).text; }),
+                                new go.TextBlock({
+                                    font: "bold 18px 'Malgun Gothic', sans-serif",
+                                    stroke: "#263238",
+                                    alignment: go.Spot.Center,
+                                    margin: new go.Margin(2, 16, 8, 16)
+                                })
+                                .bind("text", "name")
+                            )
+                    );
 
-        diagram.linkTemplate =
-            $(go.Link,
-                {
-                    routing: go.Routing.AvoidsNodes,
-                    curve: go.Curve.JumpOver,
+            // 링크 템플릿 - familyTreeJP 패턴 그대로 적용
+            myDiagram.linkTemplate =
+                new go.Link({
+                    routing: go.Routing.Orthogonal,
                     corner: 5,
-                    toShortLength: 4,
-                    relinkableFrom: true,
-                    relinkableTo: true,
-                    reshapable: true,
-                    selectionAdornmentTemplate:
-                        $(go.Adornment, "Link",
-                            $(go.Shape, { isPanelMain: true, stroke: "deepskyblue", strokeWidth: 3 })
-                        )
-                },
-                new go.Binding("points").makeTwoWay(),
-                $(go.Shape, { isPanelMain: true, strokeWidth: 2.5, stroke: "#90A4AE" }),
-                $(go.Shape, { toArrow: "Standard", stroke: null, fill: "#90A4AE" })
-            );
+                    selectable: false
+                })
+                .add(
+                    new go.Shape({ strokeWidth: 2, stroke: "#90A4AE" })
+                );
 
-        diagram.model = new go.GraphLinksModel(
-            [
+            // TreeModel - familyTreeJP 패턴: parent 키로 연결
+            var nodeDataArray = [
                 { key: 1, name: "",       role: "담임선생님" },
-                { key: 2, name: "가가가", role: "급장" },
-                { key: 3, name: "나나나", role: "미화반장" },
-                { key: 4, name: "다다다", role: "체육반장" },
-                { key: 5, name: "라라라", role: "문화반장" }
-            ],
-            [
-                { from: 1, to: 2 },
-                { from: 2, to: 3 },
-                { from: 2, to: 4 },
-                { from: 2, to: 5 }
-            ]
-        );
+                { key: 2, name: "가가가", role: "급장",     parent: 1 },
+                { key: 3, name: "나나나", role: "미화반장",  parent: 2 },
+                { key: 4, name: "다다다", role: "체육반장",  parent: 2 },
+                { key: 5, name: "라라라", role: "문화반장",  parent: 2 }
+            ];
+
+            myDiagram.model = new go.TreeModel(nodeDataArray);
+        }
+
+        window.addEventListener("DOMContentLoaded", init);
     </script>
 </body>
 </html>
