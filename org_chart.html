@@ -28,13 +28,53 @@
             border-radius: 16px;
             box-shadow: 0 6px 24px rgba(0,0,0,0.1);
         }
+        .btn-bar {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 22px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-copy {
+            background: #42A5F5;
+            color: white;
+        }
+        .btn-copy:hover { background: #1E88E5; }
+        .btn-copy.copied {
+            background: #66BB6A;
+        }
     </style>
 </head>
 <body>
     <h1>📚 초등학교 5학년 1반 조직도</h1>
     <div id="orgChartDiv"></div>
+    <div class="btn-bar">
+        <button class="btn btn-copy" onclick="copySource()">📋 HTML 소스 복사</button>
+    </div>
 
     <script>
+        function copySource() {
+            const src = document.documentElement.outerHTML;
+            const full = "<!DOCTYPE html>\n" + src;
+            navigator.clipboard.writeText(full).then(function() {
+                const btn = document.querySelector('.btn-copy');
+                btn.textContent = "✅ 복사 완료!";
+                btn.classList.add("copied");
+                setTimeout(function() {
+                    btn.textContent = "📋 HTML 소스 복사";
+                    btn.classList.remove("copied");
+                }, 2000);
+            });
+        }
+
         const $ = go.GraphObject.make;
 
         const diagram = $(go.Diagram, "orgChartDiv", {
