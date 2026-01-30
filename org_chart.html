@@ -99,6 +99,8 @@
 
         const diagram = $(go.Diagram, "orgChartDiv", {
             "undoManager.isEnabled": true,
+            "linkingTool.isEnabled": true,
+            "relinkingTool.isEnabled": true,
             layout: $(go.TreeLayout, {
                 treeStyle: go.TreeStyle.LastParents,
                 arrangement: go.TreeArrangement.Horizontal,
@@ -127,59 +129,112 @@
             return "📌";
         }
 
+        // 연결점(포트) 생성 함수
+        function makePort(name, spot, output, input) {
+            return $(go.Shape, "Circle", {
+                fill: "transparent",
+                stroke: null,
+                desiredSize: new go.Size(10, 10),
+                alignment: spot,
+                alignmentFocus: spot,
+                portId: name,
+                fromSpot: spot,
+                toSpot: spot,
+                fromLinkable: output,
+                toLinkable: input,
+                cursor: "pointer",
+                mouseEnter: function(e, port) { port.fill = "#FF7043"; },
+                mouseLeave: function(e, port) { port.fill = "transparent"; }
+            });
+        }
+
         diagram.nodeTemplate =
-            $(go.Node, "Auto",
-                { cursor: "pointer" },
-                $(go.Shape, "RoundedRectangle",
-                    {
-                        strokeWidth: 2.5,
-                        parameter1: 12,
-                        fill: "white"
-                    },
-                    new go.Binding("fill", "role", function(r) { return getNodeColor(r).bg; }),
-                    new go.Binding("stroke", "role", function(r) { return getNodeColor(r).border; })
-                ),
-                $(go.Panel, "Vertical",
-                    { margin: new go.Margin(12, 20, 12, 20) },
-                    $(go.TextBlock,
+            $(go.Node, "Spot",
+                {
+                    cursor: "pointer",
+                    locationSpot: go.Spot.Center,
+                    movable: true,
+                    selectionAdorned: true
+                },
+                new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+                $(go.Panel, "Auto",
+                    $(go.Shape, "RoundedRectangle",
                         {
-                            font: "28px sans-serif",
-                            margin: new go.Margin(0, 0, 4, 0)
+                            strokeWidth: 2.5,
+                            parameter1: 12,
+                            fill: "white"
                         },
-                        new go.Binding("text", "role", function(r) { return getIcon(r); })
+                        new go.Binding("fill", "role", function(r) { return getNodeColor(r).bg; }),
+                        new go.Binding("stroke", "role", function(r) { return getNodeColor(r).border; })
                     ),
-                    $(go.TextBlock,
-                        {
-                            font: "bold 13px 'Malgun Gothic', sans-serif",
-                            margin: new go.Margin(0, 0, 4, 0)
-                        },
-                        new go.Binding("text", "role"),
-                        new go.Binding("stroke", "role", function(r) { return getNodeColor(r).text; })
-                    ),
-                    $(go.TextBlock,
-                        {
-                            font: "bold 18px 'Malgun Gothic', sans-serif",
-                            stroke: "#263238"
-                        },
-                        new go.Binding("text", "name")
+                    $(go.Panel, "Vertical",
+                        { margin: new go.Margin(12, 20, 12, 20) },
+                        $(go.TextBlock,
+                            {
+                                font: "28px sans-serif",
+                                margin: new go.Margin(0, 0, 4, 0)
+                            },
+                            new go.Binding("text", "role", function(r) { return getIcon(r); })
+                        ),
+                        $(go.TextBlock,
+                            {
+                                font: "bold 13px 'Malgun Gothic', sans-serif",
+                                margin: new go.Margin(0, 0, 4, 0)
+                            },
+                            new go.Binding("text", "role"),
+                            new go.Binding("stroke", "role", function(r) { return getNodeColor(r).text; })
+                        ),
+                        $(go.TextBlock,
+                            {
+                                font: "bold 18px 'Malgun Gothic', sans-serif",
+                                stroke: "#263238"
+                            },
+                            new go.Binding("text", "name")
+                        )
                     )
-                )
+                ),
+                // 상하좌우 4개 연결점
+                makePort("T", go.Spot.Top,    true, true),
+                makePort("B", go.Spot.Bottom, true, true),
+                makePort("L", go.Spot.Left,   true, true),
+                makePort("R", go.Spot.Right,  true, true)
             );
 
         diagram.linkTemplate =
             $(go.Link,
-                { routing: go.Routing.Orthogonal, corner: 8 },
+                {
+                    routing: go.Routing.AvoidsNodes,
+                    corner: 10,
+                    relinkableFrom: true,
+                    relinkableTo: true,
+                    reshapable: true,
+                    resegmentable: true,
+                    cursor: "pointer"
+                },
+                new go.Binding("fromPortId").makeTwoWay(),
+                new go.Binding("toPortId").makeTwoWay(),
+                new go.Binding("points").makeTwoWay(),
                 $(go.Shape, { strokeWidth: 2.5, stroke: "#90A4AE" }),
                 $(go.Shape, { toArrow: "Triangle", stroke: "#90A4AE", fill: "#90A4AE", scale: 1.2 })
             );
 
-        diagram.model = new go.TreeModel([
-            { key: 1, name: "",       role: "담임선생님" },
-            { key: 2, name: "가가가", role: "급장",     parent: 1 },
-            { key: 3, name: "나나나", role: "미화반장",  parent: 2 },
-            { key: 4, name: "다다다", role: "체육반장",  parent: 2 },
-            { key: 5, name: "라라라", role: "문화반장",  parent: 2 }
-        ]);
+        diagram.model = new go.GraphLinksModel(
+            // 노드 데이터
+            [
+                { key: 1, name: "",       role: "담임선생님" },
+                { key: 2, name: "가가가", role: "급장" },
+                { key: 3, name: "나나나", role: "미화반장" },
+                { key: 4, name: "다다다", role: "체육반장" },
+                { key: 5, name: "라라라", role: "문화반장" }
+            ],
+            // 연결선 데이터
+            [
+                { from: 1, to: 2, fromPortId: "B", toPortId: "T" },
+                { from: 2, to: 3, fromPortId: "B", toPortId: "T" },
+                { from: 2, to: 4, fromPortId: "B", toPortId: "T" },
+                { from: 2, to: 5, fromPortId: "B", toPortId: "T" }
+            ]
+        );
     </script>
 </body>
 </html>
