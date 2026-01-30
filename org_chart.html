@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5학년 1반 조직도</title>
+    <title>5학년 1반 조직도 - GoJS</title>
+    <script src="https://unpkg.com/gojs/release/go.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -11,134 +12,114 @@
             background: linear-gradient(135deg, #e0f7fa, #fff9c4);
             min-height: 100vh;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 40px 20px;
-        }
-        .chart {
-            display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 30px 20px;
         }
-        .title {
-            font-size: 28px;
-            font-weight: bold;
+        h1 {
+            font-size: 26px;
             color: #37474f;
-            margin-bottom: 40px;
-            text-align: center;
+            margin-bottom: 20px;
         }
-        .node {
+        #orgChartDiv {
+            width: 900px;
+            height: 520px;
             background: white;
-            border-radius: 14px;
-            padding: 16px 28px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
-            position: relative;
-            transition: transform 0.2s;
-        }
-        .node:hover { transform: scale(1.05); }
-        .node .role {
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-        .node .name {
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .teacher { border: 3px solid #ef5350; }
-        .teacher .role { color: #ef5350; }
-
-        .leader { border: 3px solid #42a5f5; }
-        .leader .role { color: #42a5f5; }
-
-        .sub { border: 3px solid #66bb6a; }
-        .sub .role { color: #66bb6a; }
-
-        /* Vertical connector from teacher to leader */
-        .v-line {
-            width: 3px;
-            height: 40px;
-            background: #90a4ae;
-        }
-
-        /* Vertical connector from leader to sub row */
-        .v-line2 {
-            width: 3px;
-            height: 40px;
-            background: #90a4ae;
-        }
-
-        /* Horizontal connector bar */
-        .h-line {
-            width: 500px;
-            height: 3px;
-            background: #90a4ae;
-            position: relative;
-        }
-
-        .sub-row {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            position: relative;
-        }
-
-        .sub-col {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .sub-col .v-branch {
-            width: 3px;
-            height: 30px;
-            background: #90a4ae;
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <div class="chart">
-        <div class="title">📚 초등학교 5학년 1반 조직도</div>
+    <h1>📚 초등학교 5학년 1반 조직도</h1>
+    <div id="orgChartDiv"></div>
 
-        <div class="node teacher">
-            <div class="role">담임선생님</div>
-            <div class="name">👩‍🏫</div>
-        </div>
-        <div class="v-line"></div>
+    <script>
+        const $ = go.GraphObject.make;
 
-        <div class="node leader">
-            <div class="role">급장</div>
-            <div class="name">가가가</div>
-        </div>
-        <div class="v-line2"></div>
+        const diagram = $(go.Diagram, "orgChartDiv", {
+            "undoManager.isEnabled": true,
+            layout: $(go.TreeLayout, {
+                treeStyle: go.TreeStyle.LastParents,
+                arrangement: go.TreeArrangement.Horizontal,
+                angle: 90,
+                layerSpacing: 50,
+                nodeSpacing: 30
+            }),
+            initialContentAlignment: go.Spot.Center,
+            initialAutoScale: go.AutoScale.Uniform
+        });
 
-        <div class="h-line"></div>
+        // 노드 색상 매핑
+        function getNodeColor(role) {
+            if (role === "담임선생님") return { bg: "#FFEBEE", border: "#EF5350", text: "#C62828" };
+            if (role === "급장")       return { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" };
+            return                            { bg: "#E8F5E9", border: "#66BB6A", text: "#2E7D32" };
+        }
 
-        <div class="sub-row">
-            <div class="sub-col">
-                <div class="v-branch"></div>
-                <div class="node sub">
-                    <div class="role">🧹 미화반장</div>
-                    <div class="name">나나나</div>
-                </div>
-            </div>
-            <div class="sub-col">
-                <div class="v-branch"></div>
-                <div class="node sub">
-                    <div class="role">⚽ 체육반장</div>
-                    <div class="name">다다다</div>
-                </div>
-            </div>
-            <div class="sub-col">
-                <div class="v-branch"></div>
-                <div class="node sub">
-                    <div class="role">🎵 문화반장</div>
-                    <div class="name">라라라</div>
-                </div>
-            </div>
-        </div>
-    </div>
+        // 아이콘 매핑
+        function getIcon(role) {
+            if (role === "담임선생님") return "👩‍🏫";
+            if (role === "급장")       return "⭐";
+            if (role === "미화반장")   return "🧹";
+            if (role === "체육반장")   return "⚽";
+            if (role === "문화반장")   return "🎵";
+            return "📌";
+        }
+
+        diagram.nodeTemplate =
+            $(go.Node, "Auto",
+                { cursor: "pointer" },
+                $(go.Shape, "RoundedRectangle",
+                    {
+                        strokeWidth: 2.5,
+                        parameter1: 12,
+                        fill: "white"
+                    },
+                    new go.Binding("fill", "role", function(r) { return getNodeColor(r).bg; }),
+                    new go.Binding("stroke", "role", function(r) { return getNodeColor(r).border; })
+                ),
+                $(go.Panel, "Vertical",
+                    { margin: new go.Margin(12, 20, 12, 20) },
+                    $(go.TextBlock,
+                        {
+                            font: "28px sans-serif",
+                            margin: new go.Margin(0, 0, 4, 0)
+                        },
+                        new go.Binding("text", "role", function(r) { return getIcon(r); })
+                    ),
+                    $(go.TextBlock,
+                        {
+                            font: "bold 13px 'Malgun Gothic', sans-serif",
+                            margin: new go.Margin(0, 0, 4, 0)
+                        },
+                        new go.Binding("text", "role"),
+                        new go.Binding("stroke", "role", function(r) { return getNodeColor(r).text; })
+                    ),
+                    $(go.TextBlock,
+                        {
+                            font: "bold 18px 'Malgun Gothic', sans-serif",
+                            stroke: "#263238"
+                        },
+                        new go.Binding("text", "name")
+                    )
+                )
+            );
+
+        diagram.linkTemplate =
+            $(go.Link,
+                { routing: go.Routing.Orthogonal, corner: 8 },
+                $(go.Shape, { strokeWidth: 2.5, stroke: "#90A4AE" }),
+                $(go.Shape, { toArrow: "Triangle", stroke: "#90A4AE", fill: "#90A4AE", scale: 1.2 })
+            );
+
+        diagram.model = new go.TreeModel([
+            { key: 1, name: "",       role: "담임선생님" },
+            { key: 2, name: "가가가", role: "급장",     parent: 1 },
+            { key: 3, name: "나나나", role: "미화반장",  parent: 2 },
+            { key: 4, name: "다다다", role: "체육반장",  parent: 2 },
+            { key: 5, name: "라라라", role: "문화반장",  parent: 2 }
+        ]);
+    </script>
 </body>
 </html>
